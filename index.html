@@ -87,22 +87,23 @@
     draw(ctx) {
       ctx.save(); ctx.translate(this.x, this.y);
       let wingBeat = this.arrived ? 0 : Math.sin(Date.now() * 0.5 + this.id * 18) * 5.0;
-      ctx.scale(1.0, 1.0);
+      
+      // 根据横竖屏缩放蜜蜂大小
+      let beeScale = isPortrait() ? 0.9 : 1.15;
+      ctx.scale(beeScale, beeScale);
       
       // === 转向机制 ===
-      let facingRight = true; // 默认向右
+      let facingRight = true;
       if (!this.arrived) {
-        // 飞行中：根据速度方向决定朝向
         if (Math.abs(this.vx) > 0.1 || Math.abs(this.vy) > 0.1) {
-          facingRight = this.vx >= 0; // vx>=0 向右，vx<0 向左
+          facingRight = this.vx >= 0;
         }
       }
       if (!facingRight) {
-        ctx.scale(-1, 1); // 水平翻转
+        ctx.scale(-1, 1);
       }
       
       let bodyAngle = -0.35;
-      // 如果朝左飞，身体倾斜也翻转
       if (!facingRight) bodyAngle = -bodyAngle;
 
       // === 身体 ===
@@ -324,9 +325,9 @@
           rawPoints=generateTwoLineTextPoints('公公','生日快乐',W/2,H/2-30,100,120);
         }else{
           cachedTextPoints=null;
-          rawPoints=generateTextPoints('公公生日快乐',W/2,H/2-40,148);
+          rawPoints=generateTextPoints('公公生日快乐',W/2,H/2-40,130);
         }
-        textPoints=sampleEvenly(rawPoints,480);
+        textPoints=sampleEvenly(rawPoints, isPortrait() ? 360 : 384);
         bees.forEach((b,i)=>{
           if(i<textPoints.length)b.setTarget(textPoints[i].x,textPoints[i].y);
           else{let a=(i/bees.length)*Math.PI*2;b.setTarget(W/2+Math.cos(a)*200,H/2+Math.sin(a)*80);}
@@ -345,9 +346,10 @@
   function startAnimation(){
     startBtn.style.display='none';resizeCanvas();initHive();createFlowers();
     petals=[];for(let i=0;i<16;i++)petals.push(new Petal());
-    let total=480;bees=[];let hi=0;
+    let total = isPortrait() ? 360 : 384;
+    bees=[];let hi=0;
     for(let i=0;i<total;i++){let hole=hiveHoles[hi%7];hi++;bees.push(new Bee(hole.x+(Math.random()-0.5)*10,hole.y+(Math.random()-0.5)*10));}
-    starPoints=generateStarPoints(W/2,H/2-50,155,60);let ss=sampleEvenly(starPoints,480);
+    starPoints=generateStarPoints(W/2,H/2-50,155,60);let ss=sampleEvenly(starPoints,total);
     bees.forEach((b,i)=>{if(i<ss.length)b.setTarget(ss[i].x,ss[i].y);else{let a=(i/bees.length)*Math.PI*2;b.setTarget(W/2+Math.cos(a)*200,H/2+Math.sin(a)*80);}});
     starPoints=ss;stage='flying_to_star';stageStartTime=performance.now();currentOverlayText='none';
     playMusic();animFrame=requestAnimationFrame(animate);
