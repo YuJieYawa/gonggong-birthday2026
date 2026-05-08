@@ -75,7 +75,7 @@
     update() {
       let dx = this.targetX - this.x, dy = this.targetY - this.y, dist = Math.sqrt(dx*dx + dy*dy);
       if (dist > 0.8) {
-        this.vx += (dx/dist)*0.64; this.vy += (dy/dist)*0.64; this.vx *= 0.93; this.vy *= 0.93; this.arrived = false;
+        this.vx += (dx/dist)*0.768; this.vy += (dy/dist)*0.768; this.vx *= 0.93; this.vy *= 0.93; this.arrived = false;
       } else {
         this.vx = 0; this.vy = 0; this.x = this.targetX; this.y = this.targetY; this.arrived = true;
       }
@@ -87,12 +87,9 @@
     draw(ctx) {
       ctx.save(); ctx.translate(this.x, this.y);
       let wingBeat = this.arrived ? 0 : Math.sin(Date.now() * 0.5 + this.id * 18) * 5.0;
-      
-      // 根据横竖屏缩放蜜蜂大小
       let beeScale = isPortrait() ? 0.9 : 1.15;
       ctx.scale(beeScale, beeScale);
       
-      // === 转向机制 ===
       let facingRight = true;
       if (!this.arrived) {
         if (Math.abs(this.vx) > 0.1 || Math.abs(this.vy) > 0.1) {
@@ -106,7 +103,6 @@
       let bodyAngle = -0.35;
       if (!facingRight) bodyAngle = -bodyAngle;
 
-      // === 身体 ===
       ctx.save();
       ctx.rotate(bodyAngle);
       ctx.beginPath();
@@ -120,7 +116,6 @@
       ctx.beginPath(); ctx.moveTo(2.5, -8); ctx.lineTo(2.5, 8); ctx.stroke();
       ctx.restore();
 
-      // === 尾部尖刺 ===
       ctx.fillStyle = '#3b2e1e';
       ctx.save();
       ctx.rotate(bodyAngle);
@@ -132,12 +127,10 @@
       ctx.fill();
       ctx.restore();
 
-      // === 头部 ===
       let headX = 7.0, headY = -2.6 - 2.5;
       ctx.fillStyle = this.headColor;
       ctx.beginPath(); ctx.arc(headX, headY, 7.5, 0, Math.PI * 2); ctx.fill();
 
-      // === 翅膀 ===
       ctx.fillStyle = this.wingColor;
       ctx.save();
       ctx.translate(-2.5, -7);
@@ -162,15 +155,15 @@
 
       // === 眼睛（豆豆眼） ===
       ctx.fillStyle = '#111';
-      ctx.beginPath(); ctx.arc(headX + 2, headY - 1.5, 0.8, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(headX + 5.5, headY - 1.5, 0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(headX + -1, headY - 1.5, 0.9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(headX + 4.5, headY - 1.5, 0.85, 0, Math.PI * 2); ctx.fill();
 
       // === 微笑的嘴 ===
       ctx.strokeStyle = '#3b2e1e';
       ctx.lineWidth = 0.6;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.arc(headX + 3.75, headY + 1, 1.0, 0.2, Math.PI - 0.2);
+      ctx.arc(headX + 1.75, headY + 1, 1.5, 0.3, Math.PI - 0.2);
       ctx.stroke();
 
       ctx.restore();
@@ -266,6 +259,10 @@
   function lerpA(a1,a2,t){return a1+(a2-a1)*t;}
 
   function isPortrait() { return W < H; }
+  function isMobile() {
+    let ua = navigator.userAgent || navigator.vendor || window.opera;
+    return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini|HarmonyOS|OpenHarmony/i.test(ua);
+  }
 
   // ==================== 背景 ====================
   function drawBackground(time){
@@ -327,7 +324,13 @@
           cachedTextPoints=null;
           rawPoints=generateTextPoints('公公生日快乐',W/2,H/2-40,130);
         }
-        textPoints=sampleEvenly(rawPoints, isPortrait() ? 360 : 384);
+        let textCount;
+        if (isPortrait()) {
+          textCount = isMobile() ? 366 : 360;
+        } else {
+          textCount = 384;
+        }
+        textPoints=sampleEvenly(rawPoints, textCount);
         bees.forEach((b,i)=>{
           if(i<textPoints.length)b.setTarget(textPoints[i].x,textPoints[i].y);
           else{let a=(i/bees.length)*Math.PI*2;b.setTarget(W/2+Math.cos(a)*200,H/2+Math.sin(a)*80);}
@@ -346,10 +349,15 @@
   function startAnimation(){
     startBtn.style.display='none';resizeCanvas();initHive();createFlowers();
     petals=[];for(let i=0;i<16;i++)petals.push(new Petal());
-    let total = isPortrait() ? 360 : 384;
+    let total;
+    if (isPortrait()) {
+      total = isMobile() ? 366 : 360;
+    } else {
+      total = 384;
+    }
     bees=[];let hi=0;
     for(let i=0;i<total;i++){let hole=hiveHoles[hi%7];hi++;bees.push(new Bee(hole.x+(Math.random()-0.5)*10,hole.y+(Math.random()-0.5)*10));}
-    starPoints=generateStarPoints(W/2,H/2-50,155,60);let ss=sampleEvenly(starPoints,total);
+    starPoints=generateStarPoints(W/2,H/2-50,155,60);let ss=sampleEvenly(starPoints, total);
     bees.forEach((b,i)=>{if(i<ss.length)b.setTarget(ss[i].x,ss[i].y);else{let a=(i/bees.length)*Math.PI*2;b.setTarget(W/2+Math.cos(a)*200,H/2+Math.sin(a)*80);}});
     starPoints=ss;stage='flying_to_star';stageStartTime=performance.now();currentOverlayText='none';
     playMusic();animFrame=requestAnimationFrame(animate);
