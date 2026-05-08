@@ -52,6 +52,96 @@
   let redPhase = 'none';
   let currentOverlayText = '';
 
+  // ==================== 离屏 canvas 预渲染蜜蜂身体 ====================
+  const BEE_SIZE = 50; // 固定画布大小  
+  let beeBodyCanvas, beeBodyCtx;
+
+  function renderBeeBody(bodyColor, headColor, stripeColor) {
+    beeBodyCanvas = document.createElement('canvas');
+    beeBodyCanvas.width = beeBodyCanvas.height = BEE_SIZE;
+    beeBodyCtx = beeBodyCanvas.getContext('2d');
+    let bctx = beeBodyCtx;
+    bctx.save();
+    bctx.translate(BEE_SIZE/2, BEE_SIZE/2);
+
+    let bodyAngle = -0.35;
+
+    // 身体
+    bctx.save();
+    bctx.rotate(bodyAngle);
+    bctx.beginPath();
+    bctx.ellipse(0, 0, 7.5, 6, 0, 0, Math.PI * 2);
+    bctx.clip();
+    bctx.fillStyle = bodyColor;
+    bctx.beginPath(); bctx.ellipse(0, 0, 7.5, 6, 0, 0, Math.PI * 2); bctx.fill();
+    bctx.strokeStyle = stripeColor;
+    bctx.lineWidth = 2.5;
+    bctx.beginPath(); bctx.moveTo(-2.5, -8); bctx.lineTo(-2.5, 8); bctx.stroke();
+    bctx.beginPath(); bctx.moveTo(2.5, -8); bctx.lineTo(2.5, 8); bctx.stroke();
+    bctx.restore();
+
+    // 尾刺
+    bctx.fillStyle = '#3b2e1e';
+    bctx.save();
+    bctx.rotate(bodyAngle);
+    bctx.beginPath();
+    bctx.moveTo(-7, -1.5);
+    bctx.lineTo(-10.5, 0);
+    bctx.lineTo(-7, 1.5);
+    bctx.closePath();
+    bctx.fill();
+    bctx.restore();
+
+    // 头部
+    let headX = 7.0, headY = -2.6 - 2.5;
+    bctx.fillStyle = headColor;
+    bctx.beginPath(); bctx.arc(headX, headY, 7.5, 0, Math.PI * 2); bctx.fill();
+
+    // 眼睛
+    bctx.fillStyle = '#111';
+    bctx.beginPath(); bctx.arc(headX - 1, headY - 1.5, 0.9, 0, Math.PI * 2); bctx.fill();
+    bctx.beginPath(); bctx.arc(headX + 4.5, headY - 1.5, 0.85, 0, Math.PI * 2); bctx.fill();
+
+    // 嘴
+    bctx.strokeStyle = '#3b2e1e';
+    bctx.lineWidth = 0.6;
+    bctx.lineCap = 'round';
+    bctx.beginPath();
+    bctx.arc(headX + 1.75, headY + 1, 1.5, 0.3, Math.PI - 0.2);
+    bctx.stroke();
+
+    bctx.restore();
+  }
+
+  // 预渲染翅膀
+  const WING_SIZE = 30;
+  let wingCanvas, wingCtx;
+  function renderWing(wingColor) {
+    wingCanvas = document.createElement('canvas');
+    wingCanvas.width = wingCanvas.height = WING_SIZE;
+    wingCtx = wingCanvas.getContext('2d');
+    let wctx = wingCtx;
+    wctx.save();
+    wctx.translate(WING_SIZE/2, WING_SIZE/2);
+    wctx.fillStyle = wingColor;
+    wctx.beginPath();
+    wctx.moveTo(-3, 0);
+    wctx.bezierCurveTo(-4, -4, 3, -5, 2, 1);
+    wctx.bezierCurveTo(1, 4, -2, 2, -3, 0);
+    wctx.fill();
+    wctx.restore();
+  }
+
+  // 初始渲染（默认配色）
+  renderBeeBody('#f5c542', '#f5c542', '#3b2e1e');
+  renderWing('rgba(255, 255, 255, 0.72)');
+
+  // 暴露给外部更新缓存
+  function updateBeeCache(body, head, stripe, wing) {
+    renderBeeBody(body, head, stripe);
+    renderWing(wing);
+  }
+
   // ==================== 蜜蜂 ====================
   class Bee {
     constructor(x, y) {
@@ -60,27 +150,19 @@
       this.vx = 0; this.vy = 0;
       this.id = Math.random();
       this.arrived = false;
-      this.bodyColor = '#f5c542';
-      this.headColor = '#f5c542';
-      this.stripeColor = '#3b2e1e';
-      this.wingColor = 'rgba(255, 255, 255, 0.72)';
     }
 
     setTarget(tx, ty) { this.targetX = tx; this.targetY = ty; this.arrived = false; }
-    setColors(body, head, stripe, wing) {
-      this.bodyColor = body; this.headColor = head; this.stripeColor = stripe;
-      this.wingColor = wing;
-    }
 
     update() {
       let dx = this.targetX - this.x, dy = this.targetY - this.y, dist = Math.sqrt(dx*dx + dy*dy);
       if (dist > 0.8) {
-        this.vx += (dx/dist)*0.8; this.vy += (dy/dist)*0.8; this.vx *= 0.93; this.vy *= 0.93; this.arrived = false;
+        this.vx += (dx/dist)*0.24; this.vy += (dy/dist)*0.24; this.vx *= 0.93; this.vy *= 0.93; this.arrived = false;
       } else {
         this.vx = 0; this.vy = 0; this.x = this.targetX; this.y = this.targetY; this.arrived = true;
       }
       let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-      if (speed > 15) { this.vx = (this.vx/speed)*15; this.vy = (this.vy/speed)*15; }
+      if (speed > 6) { this.vx = (this.vx/speed)*6; this.vy = (this.vy/speed)*6; }
       this.x += this.vx; this.y += this.vy;
     }
 
@@ -89,7 +171,7 @@
       let wingBeat = this.arrived ? 0 : Math.sin(Date.now() * 0.5 + this.id * 18) * 5.0;
       let beeScale = isPortrait() ? 0.9 : 1.15;
       ctx.scale(beeScale, beeScale);
-      
+
       let facingRight = true;
       if (!this.arrived) {
         if (Math.abs(this.vx) > 0.1 || Math.abs(this.vy) > 0.1) {
@@ -99,72 +181,27 @@
       if (!facingRight) {
         ctx.scale(-1, 1);
       }
-      
+
       let bodyAngle = -0.35;
-      if (!facingRight) bodyAngle = -bodyAngle;
 
-      ctx.save();
-      ctx.rotate(bodyAngle);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 7.5, 6, 0, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.fillStyle = this.bodyColor;
-      ctx.beginPath(); ctx.ellipse(0, 0, 7.5, 6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = this.stripeColor;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(-2.5, -8); ctx.lineTo(-2.5, 8); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(2.5, -8); ctx.lineTo(2.5, 8); ctx.stroke();
-      ctx.restore();
-
-      ctx.fillStyle = '#3b2e1e';
-      ctx.save();
-      ctx.rotate(bodyAngle);
-      ctx.beginPath();
-      ctx.moveTo(-7, -1.5);
-      ctx.lineTo(-10.5, 0);
-      ctx.lineTo(-7, 1.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-
-      let headX = 7.0, headY = -2.6 - 2.5;
-      ctx.fillStyle = this.headColor;
-      ctx.beginPath(); ctx.arc(headX, headY, 7.5, 0, Math.PI * 2); ctx.fill();
-
-      ctx.fillStyle = this.wingColor;
+      // 前翅
       ctx.save();
       ctx.translate(-2.5, -7);
       ctx.rotate(0.13 + wingBeat * 3.0);
       ctx.scale(1.2, 1.2);
-      ctx.beginPath();
-      ctx.moveTo(-3, 0);
-      ctx.bezierCurveTo(-4, -4, 3, -5, 2, 1);
-      ctx.bezierCurveTo(1, 4, -2, 2, -3, 0);
-      ctx.fill();
+      ctx.drawImage(wingCanvas, -WING_SIZE/2, -WING_SIZE/2);
       ctx.restore();
+
+      // 后翅
       ctx.save();
       ctx.translate(-5, -5.5);
       ctx.rotate(bodyAngle + wingBeat * 3.0);
       ctx.scale(1.2, 1.2);
-      ctx.beginPath();
-      ctx.moveTo(-2.5, 0);
-      ctx.bezierCurveTo(-3, -3, 2.5, -4, 1.5, 1);
-      ctx.bezierCurveTo(1, 3.5, -2, 2, -2.5, 0);
-      ctx.fill();
+      ctx.drawImage(wingCanvas, -WING_SIZE/2, -WING_SIZE/2);
       ctx.restore();
 
-      // === 眼睛（豆豆眼） ===
-      ctx.fillStyle = '#111';
-      ctx.beginPath(); ctx.arc(headX + -1, headY - 1.5, 0.9, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(headX + 4.5, headY - 1.5, 0.85, 0, Math.PI * 2); ctx.fill();
-
-      // === 微笑的嘴 ===
-      ctx.strokeStyle = '#3b2e1e';
-      ctx.lineWidth = 0.6;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(headX + 1.75, headY + 1, 1.5, 0.3, Math.PI - 0.2);
-      ctx.stroke();
+      // 身体（离屏 canvas）
+      ctx.drawImage(beeBodyCanvas, -BEE_SIZE/2, -BEE_SIZE/2);
 
       ctx.restore();
     }
@@ -294,7 +331,7 @@
       let body=lerpC('#f5c542','#C41E3A',t),head=lerpC('#f5c542','#C41E3A',t),stripe=lerpC('#3b2e1e','#5a1020',t);
       let wingR=Math.round(lerpA(255,220,t)),wingG=Math.round(lerpA(255,40,t)),wingB=Math.round(lerpA(255,40,t)),wingA=lerpA(0.72,0.65,t);
       let wing=`rgba(${wingR},${wingG},${wingB},${wingA})`;
-      bees.forEach(b=>b.setColors(body,head,stripe,wing));
+      updateBeeCache(body,head,stripe,wing);
       if(t>=1){redPhase='holding';starFormedTime=now;}
     }else if(redPhase==='holding'){
       if((now-starFormedTime)/1000>=3){redPhase='fading_out';starFormedTime=now;}
@@ -303,8 +340,8 @@
       let body=lerpC('#C41E3A','#f5c542',t),head=lerpC('#C41E3A','#f5c542',t),stripe=lerpC('#5a1020','#3b2e1e',t);
       let wingR=Math.round(lerpA(220,255,t)),wingG=Math.round(lerpA(40,255,t)),wingB=Math.round(lerpA(40,255,t)),wingA=lerpA(0.65,0.72,t);
       let wing=`rgba(${wingR},${wingG},${wingB},${wingA})`;
-      bees.forEach(b=>b.setColors(body,head,stripe,wing));
-      if(t>=1){redPhase='done';bees.forEach(b=>b.setColors('#f5c542','#f5c542','#3b2e1e','rgba(255,255,255,0.72)'));}
+      updateBeeCache(body,head,stripe,wing);
+      if(t>=1){redPhase='done';updateBeeCache('#f5c542','#f5c542','#3b2e1e','rgba(255,255,255,0.72)');}
     }
 
     bees.forEach(b=>b.update());bees.forEach(b=>b.draw(ctx));petals.forEach(p=>{p.update();p.draw(ctx);});
