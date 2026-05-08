@@ -168,7 +168,7 @@
 
     draw(ctx) {
       ctx.save(); ctx.translate(this.x, this.y);
-      let wingBeat = this.arrived ? 0 : Math.sin(Date.now() * 0.5 + this.id * 18) * 5.0;
+      let wingBeat = this.arrived ? 0 : Math.sin(Date.now() * 0.6 + this.id * 18) * 5.0;
       let beeScale = isPortrait() ? 0.9 : 1.15;
       ctx.scale(beeScale, beeScale);
 
